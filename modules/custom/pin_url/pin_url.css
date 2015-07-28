@@ -1,0 +1,31 @@
+/**
+ * @file pin_url.css
+ *
+ */
+
+#edit-top-nav {
+  display: block;
+  text-align: center;
+}
+
+#pin-url-image {
+  margin: 5px;
+  display: block;
+}
+
+div.pin-url-markup span.pin-url-markup-title {
+  font-weight: bolder;
+}
+
+.pin-url-step {
+
+}
+
+/* select an image */
+div.form-type-radio.form-item-image.form-item.radio {
+  display: inline-block;
+  border: 2px solid #ccc;
+  vertical-align: top;
+  margin: 10px;
+  padding: 5px 5px 5px;
+}

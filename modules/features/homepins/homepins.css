@@ -1,0 +1,10 @@
+/**
+ * @file homepins.css
+ *
+ */
+
+/* hide the awful pager with views_infinite_scroll in place */
+ul.pager {
+  visibility: hidden;
+}
+

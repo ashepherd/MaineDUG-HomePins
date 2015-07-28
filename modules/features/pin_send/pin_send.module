@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file pin_send.module
+ */
+
+include_once 'pin_send.features.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function pin_send_menu() {
+  $items['send-pin'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'menu_name' => 'main-menu',
+    'title' => t('Send a Pin'),
+    'description' => 'Send a Pin to someone else',
+    'page callback' => 'pin_send_page',
+    'access arguments' => array('view published content'),
+    'file' => 'pin_send.pages.inc',
+  );
+
+  return $items;
+}

@@ -1,0 +1,182 @@
+<?php
+/**
+ * @file
+ * Code for the Home Pins feature.
+ */
+
+include_once 'homepins.features.inc';
+
+/**
+ * Implements hook_form_alter().
+ */
+function homepins_form_alter(&$form, &$form_state, $form_id) {
+
+  // Using hook_form_alter to do something across multiple forms.
+  if (!empty($form['#node_edit_form'])) {
+    // If a node form, display some markup at the top.
+    $form['homepins-message'] = array(
+      '#markup' => '<div id="homepins-message">Some message for all nodes</div>',
+      '#weight' => -999,
+    );
+
+    // Custom validation handler.
+    //$form['#validate'][] = '_homepins_node_form_title_validate';
+    array_unshift($form['#validate'], '_homepins_node_form_title_validate');
+
+    // Attach JS or CSS.
+
+  }
+  //dpm($form);
+  //dpm($form_state);
+}
+
+function _homepins_node_form_title_validate($form, &$form_state) {
+  dpm($form_state, 'form_state');
+
+  $string = $form_state['values']['title'];
+
+  // Check for non-ASCII chars.
+  $pattern = '/[^\x20-\x7f]/';
+  if (preg_match($pattern, $string)) {
+    form_set_error('title', t('Only ASCII text, please.'));
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ *
+ */
+function homepins_form_pin_node_form_alter(&$form, &$form_state, $form_id) {
+
+  // Edit a field's label.
+  $form['title']['#title'] = 'Name of the Pin';
+
+  // Add some #prefix markup to the Upload field.
+  // Show the default image if an image hasn't been uploaded yet.
+  if (empty($form['field_image'][LANGUAGE_NONE][0]['#default_value']['fid'])) {
+    $instance = field_info_instance('node', 'field_image', 'pin');
+    if (!empty($instance['settings']['default_image'])) {
+      $default_fid = $instance['settings']['default_image'];
+      $default_img_object = file_load( $default_fid );
+      $var = array(
+        'item' => array(
+          'uri' => $default_img_object->uri,
+        ),
+        'image_style' => 'thumbnail',
+      );
+      $form['field_image']['#prefix'] = theme_image_formatter($var) . '<span class="field-image-default-text">This is the default image for Pins without an image.</span>';
+    }
+  }
+
+  // ALTER SELECT OPTIONS.
+  // Add the number of pins a board has to the select list of options.
+  $boards = $form['field_board'][LANGUAGE_NONE]['#options'];
+
+  $pin_counts = db_query("SELECT board_pins.field_board_target_id as board,
+      COUNT(board_pins.entity_id) as pin_count
+    FROM {field_revision_field_board} board_pins
+    WHERE board_pins.entity_type = 'node' AND board_pins.bundle = 'pin' AND board_pins.deleted = 0
+    GROUP BY board_pins.field_board_target_id")
+    ->fetchAllKeyed();
+
+  // Edit any boards from the options array.
+  foreach($boards as $key => $board) {
+
+    // Skip all keys in the board select list that aren't possibly node IDs.
+    if (!is_numeric($key)) {
+      continue;
+    }
+    // Prepare the count text for the Board.
+    $board_pin_count = !empty($pin_counts[$key]) ? $pin_counts[$key] : '0';
+    $pin_text = ('1' == $board_pin_count) ? 'pin' : 'pins';
+    // Edit the $boards array variable.
+    $boards[$key] = $board . ' (' . $board_pin_count . ' ' . $pin_text . ')';
+  }
+
+  // Set the #options of the field_board to the edited $boards array.
+  $form['field_board'][LANGUAGE_NONE]['#options'] = $boards;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function homepins_form_board_node_form_alter(&$form, &$form_state, $form_id) {
+  $form['title']['#element_validate'][] = 'homepins_node_title_unique_validate';
+}
+
+/**
+ * Validate the uniqueness of the node title.
+ */
+function homepins_node_title_unique_validate($element, &$form_state, $form) {
+
+  // Get the submitted node title value.
+  $value = $element['#value'];
+
+  // The type of node to check on uniqueness.
+  $node_bundle = FALSE;
+  //$node_bundle = $form_state['node']->type;
+
+  // Need for PART TWO: in re-use by custom form
+  if (!empty($form_state['node'])) {
+    $node_bundle = $form_state['node']->type;
+  }
+  // Check the element for the node bundle.
+  // *** Use a hashed name for 'homepins_node_bundle',
+  //     otherwise Drupal will think it's a form field and try to evaluate it.
+  elseif (!empty($element['#homepins_node_bundle'])) {
+    $node_bundle = $element['#homepins_node_bundle'];
+  }
+
+  // Need for PART TWO: in re-use by custom form
+  if (empty($node_bundle)) {
+    drupal_set_message(t('Could not determine how to validate the name of the content'), 'warning', FALSE);
+    return;
+  }
+
+  // Check the submitted title against existing nodes.
+  $query = new EntityFieldQuery();
+  $results = $query
+    ->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', $node_bundle)
+    ->propertyCondition('title', $value)
+    ->propertyCondition('status', 1)
+    ->execute();
+
+  // If has results, submit an error.
+  if (!empty($results)) {
+
+    // Setup t() array of substitutions for the error message.
+    $substitutions = array(
+      // In the real world, we would look up the node bundle's name
+      // and put that here. For brevity, the machine_name of the bundle is fine.
+      '@type' => $node_bundle,
+      '%title' => $value,
+    );
+
+    // Use form_error() instead of form_set_error() b/c we have the $element.
+    form_error($element, t('A @type called %title already exists.', $substitutions));
+  }
+}
+
+/**
+ * Create a stub node object.
+ *
+ * @param string $bundle
+ *   The type of node to create.
+ *
+ * @return object
+ *   The stub node.
+ */
+function _homepins_stub_node($bundle) {
+  global $user;
+
+  $node = new stdClass();
+  $node->type = $bundle;
+  $node->uid = $user->uid;
+  $node->language = LANGUAGE_NONE;
+  $node->name = $user->name;
+
+  return $node;
+}
+

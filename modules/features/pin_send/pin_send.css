@@ -1,0 +1,12 @@
+/**
+ * @file pin_send.css
+ *
+ */
+
+h2#recommended-title {
+  font-style: italic;
+}
+
+table.views-view-grid.cols-5 {
+  width: 100%;
+}

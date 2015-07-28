@@ -1,0 +1,10 @@
+name = Send a Pin
+core = 7.x
+package = Maine DUG July 2015
+version = 7.x-0.1
+dependencies[] = homepins
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features[menu_links][] = main-menu_send-a-pin:send-pin
+features[views_view][] = recommended_pins
