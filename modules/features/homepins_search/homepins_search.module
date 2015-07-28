@@ -1,0 +1,218 @@
+<?php
+/**
+ * @file
+ * Code for the Homepins Search feature.
+ */
+
+include_once 'homepins_search.features.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function homepins_search_menu() {
+  $items['saved-searches/autocomplete'] = array(
+    'type' => MENU_CALLBACK,
+    'title' => 'Autocomplete for Saved Searches',
+    'page callback' => '_homepins_search_saved_search_autocomplete',
+    'access arguments' => array('view published content'),
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function homepins_search_form_views_exposed_form_alter(&$form, &$form_state, $form_id) {
+  // This alter call is getting called twice, once by Views, once by Blocks.
+  if (empty($form_state['rerender'])) {
+    // Skip the Views call by checking for 'rerender' in the $form_state.
+    return;
+  }
+
+  // Figure out which View we are working with.
+  $view_name = $form_state['view']->name;
+
+  // Work on a specific View's exposed filter form.
+  switch($view_name) {
+    case 'search':
+
+      // PART ONE: Hide the excess and create one field
+      // like the 'Global: Combine Field Filter'
+      // when showing Fields instead of Content
+
+      // Hide the fields we don't want to see.
+      $form['desc']['#type'] = 'hidden';
+      $form['category']['#type'] = 'hidden';
+
+      // Hide the labels.
+      $form['#info']['filter-field_description_value']['label'] = '';
+      $form['#info']['filter-name']['label'] = '';
+      $form['#info']['filter-title']['label'] = '';
+
+      // Keep track of the form field that is left visible.
+      $form_state['homepins_search_exposed_filters_search_field'] = 'name';
+      // Keep track of the form fields that are hidden.
+      $form_state['homepins_search_exposed_filters_hidden_fields'] = array(
+        'desc',
+        'category',
+      );
+
+      // Add the custom submit handler as the first submit function to run.
+      array_unshift($form['#submit'], '_homepins_search_views_search_filter');
+
+      // Move the submit button below our saved-search section.
+      $form['submit']['#weight'] = 99;
+
+
+      // PART TWO: Make an option to save the search.
+
+      $form['saved-search'] = array(
+        '#type' => 'container',
+        '#weight' => 5,
+
+        // PART THREE: Only show this when there is text in the search field.
+        '#states' => array(
+          'visible' => array(
+            ':input[name="name"]' => array('filled' => TRUE),
+          ),
+        ),
+      );
+      $form['saved-search']['create-saved-search'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Save this Search?'),
+        '#weight' => 1,
+      );
+
+      $form['saved-search']['saved-search-title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Name of the saved search.'),
+        '#description' => 'Give it a name',
+        '#states' => array(
+          'visible' => array(
+            ':input[name="create-saved-search"]' => array('checked' => TRUE),
+          ),
+        ),
+        // Re-use the #element_validate handler from 'homepins' module.
+        '#element_validate' => array('homepins_node_title_unique_validate'),
+        // Set the node bundle for the #element_validate.
+        '#homepins_node_bundle' => 'saved_search',
+        '#weight' => 2,
+      );
+
+      // Add a custom submit handler to run post filtering
+      $form['#submit'][] = '_homepins_search_create_saved_search_submit';
+
+
+      // PART THREE: #autocomplete_path
+      // search over what queries people have saved.
+      $form['name']['#autocomplete_path'] = 'saved-searches/autocomplete';
+
+    break;
+
+  }
+  //dpm($form_state);
+}
+
+/**
+ * Create a Saved Search node from custom form submit.
+ */
+function _homepins_search_create_saved_search_submit($form, &$form_state) {
+
+  // Check if Saved Searched should be created.
+  $create_saved_search = $form_state['values']['create-saved-search'];
+  if (!$create_saved_search) {
+    return;
+  }
+
+  // Create a Saved Search node.
+  $title = $form_state['values']['saved-search-title'];
+  $search_string = $form_state['values']['name'];
+  $node = _homepins_search_create_saved_search_node($title, $search_string);
+  // Save it to the form_state, just in case.
+  $form_state['storage']['saved_search'] = $node;
+}
+
+/**
+ * Autocomple search for saved searches.
+ *
+ * @param string $string
+ *   The user's query.
+ *
+ */
+function _homepins_search_saved_search_autocomplete($string) {
+
+  $result = db_select('field_data_field_search_query', 'q')
+    ->fields('q', array('field_search_query_value'))
+    ->condition('field_search_query_value', '%' . db_like($string) . '%', 'LIKE')
+    ->execute();
+
+  $matches = array();
+  // save the query to matches
+  foreach ($result as $row) {
+    $matches[$row->field_search_query_value] = check_plain($row->field_search_query_value);
+  }
+
+  // Return the result to the form in json
+  drupal_json_output($matches);
+}
+
+/**
+ * Create a Saved Search node.
+ */
+function _homepins_search_create_saved_search_node($title, $search_string) {
+  $node = _homepins_stub_node('saved_search');
+
+  // Save it to the Main Menu.
+  $saved_searches_menu_link = _homepins_search_find_saved_searches_menu_link_item();
+  if ($saved_searches_menu_link) {
+    $node->menu = array(
+      'link_title' => t('@title', array('@title' => $title)),
+      // Need to pass 'description' or you will get php warnings.
+      'description' => '',
+      'menu_name' => 'main-menu',
+      // Set the parent menu link to the 'Saved Searches' menu link.
+      'plid' => $saved_searches_menu_link['mlid'],
+      // Enable the menu link.
+      'enabled' => 1,
+    );
+  }
+
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $wrapper->title = $title;
+  $wrapper->field_search_query = $search_string;
+  $wrapper->save();
+
+  return $node;
+}
+/**
+ * Find the Saved Searches menu link item in the Main Menu.
+ *
+ * @return mixed
+ *    Either a Menu Link item or FALSE.
+ */
+function _homepins_search_find_saved_searches_menu_link_item() {
+  $links = menu_load_links('main-menu');
+  if (!empty($links)) {
+    foreach($links as $menu_item) {
+      if ('saved-searches' == $menu_item['link_path']) {
+        return $menu_item;
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fill out the hidden fields with the search string.
+ */
+function _homepins_search_views_search_filter($form, &$form_state) {
+  // Get the search string submitted by the user.
+  $search = $form_state['values'][$form_state['homepins_search_exposed_filters_search_field']];
+
+  // Assign the search string to the appropriate hidden fields.
+  $hidden_fields = $form_state['homepins_search_exposed_filters_hidden_fields'];
+  foreach ($hidden_fields as $hidden) {
+    $form_state['values'][$hidden] = $search;
+  }
+}

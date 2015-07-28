@@ -1,0 +1,5 @@
+name = Pin from URL
+core = 7.x
+package = Maine DUG July 2015
+version = 7.x-0.1
+dependencies[] = homepins
