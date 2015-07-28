@@ -9,10 +9,16 @@
  * Send a Pin Page.
  */
 function pin_send_page() {
+  // STEP 1: Include the Recommended Pins View.
   $html = '<h2 id="recommended-title">Recommended Pins</h2>';
   $html .= views_embed_view('recommended_pins' , 'default');
+
+  $html .= '<hr/>';
+
+  // STEP 2: Include the pin_send custom form.
   $form = drupal_get_form('pin_send_form');
   $html .= drupal_render($form);
+
   return $html;
 }
 
@@ -20,8 +26,6 @@ function pin_send_page() {
  * Form for sending Pins to people.
  */
 function pin_send_form($form, &$form_state) {
-
-  $form['#after_build'][] = '_pin_send_add_styles';
 
   $form['recipient'] = array(
     '#type' => 'textfield',
@@ -32,14 +36,23 @@ function pin_send_form($form, &$form_state) {
     '#weight' => 1,
   );
 
+  $form['send'] = array(
+    '#type' => 'submit',
+    '#value' => 'Send',
+    '#attributes' => array('class' => array('btn-primary')),
+    '#weight' => 99,
+  );
+
   $form['select-pins'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Select a Pin'),
+    '#title' => t('Pins to Send'),
     '#weight' => 2,
     '#prefix' => '<div id="select-pins-section">',
     '#suffix' => '</div>',
   );
 
+  // STEP 2: #ajax - Add another Pin to send
+  /*
   $form['select-pins']['add-pin'] = array(
     '#type' => 'button',
     '#value' => t('Add Another Pin'),
@@ -51,49 +64,41 @@ function pin_send_form($form, &$form_state) {
       'effect' => 'fade',
     ),
   );
+  */
 
-  // Make sure at least one pin textfield is displayed.
-  if (!isset($form_state['storage']['pin-count'])) {
-    $form_state['storage']['pin-count'] = 1;
-  }
+  // How many Pins to send.
+  $pin_count = 1;
 
-  // Get an array of Pins only once.
+  // Get an array of Pins only once for performance.
   if (!isset($form_state['storage']['pins'])) {
     $form_state['storage']['pins'] = _pin_send_pin_options();
   }
-  $options = $form_state['storage']['pins'];
+  $select_a_pin = $form_state['storage']['pins'];
 
-  for($a = 0; $a < $form_state['storage']['pin-count']; $a++) {
+  // STEP 2a: Use the pin count set in the $form_state['storage']['pin-count'].
+  /*
+  // Make sure at least one pin textfield is displayed.
+  if (!isset($form_state['storage']['pin-count'])) {
+    $form_state['storage']['pin-count'] = $pin_count;
+  }
+  else {
+    $pin_count = $form_state['storage']['pin-count'];
+  }
+  */
+
+  // For each Pin count
+  for($a = 0; $a < $pin_count; $a++) {
     $pin_id = 'pin-' . $a;
     $form['select-pins'][$pin_id] = array(
       '#type' => 'select',
       '#title' => t('Select a Pin'),
-      '#options' => $options,
+      '#options' => $select_a_pin,
       '#weight' => $a,
     );
   }
 
-  $form['send'] = array(
-    '#type' => 'submit',
-    '#value' => 'Send',
-    '#attributes' => array('class' => array('btn-primary')),
-    '#weight' => 99,
-
-  );
-
-  return $form;
-}
-
-/**
- * Add styles to a form.
- */
-function _pin_send_add_styles($form, &$form_state) {
-  $form['recipient']['#suffix'] = 'This text will rule them all!';
-
-  //This line works even after validation fails.
-  $form['#attached']['css'] = array(
-    drupal_get_path('module', 'pin_send') . '/pin_send.css',
-  );
+  // Make sure my styles work even if form validation fails.
+  //$form['#after_build'][] = '_pin_send_after_build';
 
   return $form;
 }
@@ -115,6 +120,20 @@ function pin_send_form_validate($form, &$form_state) {
   if (!valid_email_address($email)) {
     form_set_error('recipient', t('The email address %email is invalid', array('%email' => $email)));
   }
+}
+
+/**
+ * Add styles to a form, etc.
+ */
+function _pin_send_after_build($form, &$form_state) {
+  $form['recipient']['#suffix'] = 'This text will rule them all!';
+
+  //This line works even after validation fails.
+  $form['#attached']['css'] = array(
+    drupal_get_path('module', 'pin_send') . '/pin_send.css',
+  );
+
+  return $form;
 }
 
 /**

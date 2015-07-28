@@ -10,8 +10,17 @@
 function pin_url_create_form($form, &$form_state) {
   global $user;
 
-  $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
+  // Styling for front-end designers.
+  $form['#attached'] = array(
+    'css' => array(
+      drupal_get_path('module', 'pin_url') . '/pin_url.css',
+    ),
+    'js' => array(
+      drupal_get_path('module', 'pin_url') . '/pin_url.js',
+    ),
+  );
 
+  /*
   // Setup buttons atop of the form for navigation.
   $form['top-nav'] = array(
     '#type' => 'container',
@@ -38,21 +47,22 @@ function pin_url_create_form($form, &$form_state) {
   );
   // Set the Bootstrap primary button class for the current step.
   $form['top-nav']['step-' . $step]['#attributes']['class'][] = 'btn-primary';
-
-  // Styling for front-end designers.
-  $form['#attached']['css'] = array(
-    drupal_get_path('module', 'pin_url') . '/pin_url.css',
-  );
+  */
 
   // Keep track of the types of submit buttons to show.
   $next_submit = FALSE;
   $previous_submit = FALSE;
   $save_submit = FALSE;
 
+  // Keep track of which step we are on.
+  $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
+
+  // Show the appropriate multi-step form.
   switch($step) {
     case 1:
       $next_submit = TRUE;
 
+      // If the website step has occurred, get the value for #default_value.
       $website = !empty($form_state['storage']['values'][1]['website']) ? $form_state['storage']['values'][1]['website'] : '';
       $form['website'] = array(
         '#type' => 'textfield',
@@ -173,6 +183,7 @@ function pin_url_create_form($form, &$form_state) {
 
   }
 
+  // Render the Next, Previous and Create buttons.
   $form['buttons'] = array(
     '#type' => 'container',
     '#weight' => 90,
