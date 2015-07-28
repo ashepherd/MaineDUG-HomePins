@@ -43,3 +43,5 @@ features_exclude[dependencies][ctools] = ctools
 features_exclude[dependencies][features] = features
 features_exclude[dependencies][menu] = menu
 features_exclude[dependencies][strongarm] = strongarm
+
+stylesheets[all][] = homepins_search.css

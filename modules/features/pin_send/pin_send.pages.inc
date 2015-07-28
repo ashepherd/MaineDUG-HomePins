@@ -17,21 +17,6 @@ function pin_send_page() {
 }
 
 /**
- * Add styles to a form.
- */
-function _pin_send_add_styles($form, &$form_state) {
-
-  $form['recipient']['#suffix'] = 'This text will rule them all!';
-
-  //This line works even after validation fails.
-  $form['#attached']['css'] = array(
-    drupal_get_path('module', 'pin_send') . '/pin_send.css',
-  );
-
-  return $form;
-}
-
-/**
  * Form for sending Pins to people.
  */
 function pin_send_form($form, &$form_state) {
@@ -100,6 +85,20 @@ function pin_send_form($form, &$form_state) {
 }
 
 /**
+ * Add styles to a form.
+ */
+function _pin_send_add_styles($form, &$form_state) {
+  $form['recipient']['#suffix'] = 'This text will rule them all!';
+
+  //This line works even after validation fails.
+  $form['#attached']['css'] = array(
+    drupal_get_path('module', 'pin_send') . '/pin_send.css',
+  );
+
+  return $form;
+}
+
+/**
  * AJAX callback for adding pins to the message.
  */
 function _pin_send_add_pin(&$form, &$form_state) {
@@ -107,6 +106,7 @@ function _pin_send_add_pin(&$form, &$form_state) {
   $form = drupal_rebuild_form($form['#form_id'], $form_state, $form);
   return $form['select-pins'];
 }
+
 /**
  * Pin send validation handler.
  */

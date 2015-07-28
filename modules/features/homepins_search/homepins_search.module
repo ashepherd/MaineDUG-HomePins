@@ -7,19 +7,6 @@
 include_once 'homepins_search.features.inc';
 
 /**
- * Implements hook_menu().
- */
-function homepins_search_menu() {
-  $items['saved-searches/autocomplete'] = array(
-    'type' => MENU_CALLBACK,
-    'title' => 'Autocomplete for Saved Searches',
-    'page callback' => '_homepins_search_saved_search_autocomplete',
-    'access arguments' => array('view published content'),
-  );
-  return $items;
-}
-
-/**
  * Implements hook_form_FORM_ID_alter().
  */
 function homepins_search_form_views_exposed_form_alter(&$form, &$form_state, $form_id) {
@@ -29,6 +16,9 @@ function homepins_search_form_views_exposed_form_alter(&$form, &$form_state, $fo
     return;
   }
 
+  // STEP 1: ONE Search Field.
+  //dpm($form, 'Views exposed filter form');
+
   // Figure out which View we are working with.
   $view_name = $form_state['view']->name;
 
@@ -36,47 +26,45 @@ function homepins_search_form_views_exposed_form_alter(&$form, &$form_state, $fo
   switch($view_name) {
     case 'search':
 
-      // PART ONE: Hide the excess and create one field
+      //*
+      // STEP 2:
+      // Hide the excess and create one field
       // like the 'Global: Combine Field Filter'
       // when showing Fields instead of Content
 
       // Hide the fields we don't want to see.
-      $form['desc']['#type'] = 'hidden';
-      $form['category']['#type'] = 'hidden';
+      //$form['desc']['#type'] = 'hidden';
 
       // Hide the labels.
-      $form['#info']['filter-field_description_value']['label'] = '';
-      $form['#info']['filter-name']['label'] = '';
-      $form['#info']['filter-title']['label'] = '';
+      //$form['#info']['filter-field_description_value']['label'] = '';
+      //$form['#info']['filter-title']['label'] = '';
 
-      // Keep track of the form field that is left visible.
-      $form_state['homepins_search_exposed_filters_search_field'] = 'name';
-      // Keep track of the form fields that are hidden.
-      $form_state['homepins_search_exposed_filters_hidden_fields'] = array(
-        'desc',
-        'category',
-      );
+      // STEP 3: Custom Submit Handler
 
       // Add the custom submit handler as the first submit function to run.
-      array_unshift($form['#submit'], '_homepins_search_views_search_filter');
+      //array_unshift($form['#submit'], '_homepins_search_views_search_filter');
+      // Keep track of the form field that is left visible.
+      //$form_state['homepins_search_exposed_filters_search_field'] = 'name';
+      // Keep track of the form fields that are hidden.
+      //$form_state['homepins_search_exposed_filters_hidden_fields'] = array('desc');
+      //*/
 
-      // Move the submit button below our saved-search section.
-      $form['submit']['#weight'] = 99;
-
-
-      // PART TWO: Make an option to save the search.
+      /*
+      // STEP 4: Make an option to save the search.
 
       $form['saved-search'] = array(
         '#type' => 'container',
         '#weight' => 5,
 
-        // PART THREE: Only show this when there is text in the search field.
+        // STEP 5: Form field dependencies
+        // Only show this when there is text in the search field.
         '#states' => array(
           'visible' => array(
             ':input[name="name"]' => array('filled' => TRUE),
           ),
         ),
       );
+
       $form['saved-search']['create-saved-search'] = array(
         '#type' => 'checkbox',
         '#title' => t('Save this Search?'),
@@ -87,49 +75,60 @@ function homepins_search_form_views_exposed_form_alter(&$form, &$form_state, $fo
         '#type' => 'textfield',
         '#title' => t('Name of the saved search.'),
         '#description' => 'Give it a name',
-        '#states' => array(
-          'visible' => array(
-            ':input[name="create-saved-search"]' => array('checked' => TRUE),
-          ),
-        ),
-        // Re-use the #element_validate handler from 'homepins' module.
-        '#element_validate' => array('homepins_node_title_unique_validate'),
-        // Set the node bundle for the #element_validate.
-        '#homepins_node_bundle' => 'saved_search',
         '#weight' => 2,
+
+        //'#states' => array(
+        //  'visible' => array(
+        //    ':input[name="create-saved-search"]' => array('checked' => TRUE),
+        //  ),
+        //),
+
+        // Re-use the #element_validate handler from 'homepins' module.
+        //'#element_validate' => array('homepins_node_title_unique_validate'),
+        // Set the node bundle for the #element_validate.
+        //'#homepins_node_bundle' => 'saved_search',
       );
 
       // Add a custom submit handler to run post filtering
       $form['#submit'][] = '_homepins_search_create_saved_search_submit';
+      //*/
 
-
-      // PART THREE: #autocomplete_path
+      /*
+      // STEP 6: #autocomplete_path
       // search over what queries people have saved.
       $form['name']['#autocomplete_path'] = 'saved-searches/autocomplete';
-
+      */
     break;
 
   }
-  //dpm($form_state);
 }
 
 /**
- * Create a Saved Search node from custom form submit.
+ * Fill out the hidden fields with the search string.
  */
-function _homepins_search_create_saved_search_submit($form, &$form_state) {
+function _homepins_search_views_search_filter($form, &$form_state) {
+  // Get the search string submitted by the user.
+  $search = $form_state['values'][$form_state['homepins_search_exposed_filters_search_field']];
 
-  // Check if Saved Searched should be created.
-  $create_saved_search = $form_state['values']['create-saved-search'];
-  if (!$create_saved_search) {
-    return;
+  // Assign the search string to the appropriate hidden fields.
+  $hidden_fields = $form_state['homepins_search_exposed_filters_hidden_fields'];
+  foreach ($hidden_fields as $hidden) {
+    $form_state['values'][$hidden] = $search;
   }
+}
 
-  // Create a Saved Search node.
-  $title = $form_state['values']['saved-search-title'];
-  $search_string = $form_state['values']['name'];
-  $node = _homepins_search_create_saved_search_node($title, $search_string);
-  // Save it to the form_state, just in case.
-  $form_state['storage']['saved_search'] = $node;
+/**
+ * Implements hook_menu().
+ */
+function homepins_search_menu() {
+  // STEP 7: #autocomplete_path
+  $items['saved-searches/autocomplete'] = array(
+    'type' => MENU_CALLBACK,
+    'title' => 'Autocomplete for Saved Searches',
+    'page callback' => '_homepins_search_saved_search_autocomplete',
+    'access arguments' => array('view published content'),
+  );
+  return $items;
 }
 
 /**
@@ -154,6 +153,25 @@ function _homepins_search_saved_search_autocomplete($string) {
 
   // Return the result to the form in json
   drupal_json_output($matches);
+}
+
+/**
+ * Create a Saved Search node from custom form submit.
+ */
+function _homepins_search_create_saved_search_submit($form, &$form_state) {
+
+  // Check if Saved Searched should be created.
+  $create_saved_search = $form_state['values']['create-saved-search'];
+  if (!$create_saved_search) {
+    return;
+  }
+
+  // Create a Saved Search node.
+  $title = $form_state['values']['saved-search-title'];
+  $search_string = $form_state['values']['name'];
+  $node = _homepins_search_create_saved_search_node($title, $search_string);
+  // Save it to the form_state, just in case.
+  $form_state['storage']['saved_search'] = $node;
 }
 
 /**
@@ -201,18 +219,4 @@ function _homepins_search_find_saved_searches_menu_link_item() {
   }
 
   return FALSE;
-}
-
-/**
- * Fill out the hidden fields with the search string.
- */
-function _homepins_search_views_search_filter($form, &$form_state) {
-  // Get the search string submitted by the user.
-  $search = $form_state['values'][$form_state['homepins_search_exposed_filters_search_field']];
-
-  // Assign the search string to the appropriate hidden fields.
-  $hidden_fields = $form_state['homepins_search_exposed_filters_hidden_fields'];
-  foreach ($hidden_fields as $hidden) {
-    $form_state['values'][$hidden] = $search;
-  }
 }

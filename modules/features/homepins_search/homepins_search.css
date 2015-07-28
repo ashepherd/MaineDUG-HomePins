@@ -1,0 +1,10 @@
+/**
+ * @file homepins_search.css
+ *
+ */
+
+/* hide the awful pager with views_infinite_scroll in place */
+table.views-view-grid.cols-4 {
+  width: 100%;
+}
+
