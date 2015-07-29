@@ -20,7 +20,10 @@ function pin_url_create_form($form, &$form_state) {
     ),
   );
 
-  /*
+  // Keep track of which step we are on.
+  $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
+
+
   // Setup buttons atop of the form for navigation.
   $form['top-nav'] = array(
     '#type' => 'container',
@@ -47,15 +50,12 @@ function pin_url_create_form($form, &$form_state) {
   );
   // Set the Bootstrap primary button class for the current step.
   $form['top-nav']['step-' . $step]['#attributes']['class'][] = 'btn-primary';
-  */
+
 
   // Keep track of the types of submit buttons to show.
   $next_submit = FALSE;
   $previous_submit = FALSE;
   $save_submit = FALSE;
-
-  // Keep track of which step we are on.
-  $step = isset($form_state['storage']['step']) ? $form_state['storage']['step'] : 1;
 
   // Show the appropriate multi-step form.
   switch($step) {
@@ -431,9 +431,13 @@ function pin_url_parse($html_url) {
     $valid = FALSE;
     $url_headers = get_headers($image, 1);
     if (!empty($url_headers['Content-Type'])) {
-      $type = strtolower($url_headers['Content-Type']);
-      // Does the media type start with 'image/'.
-      $valid = !empty($type) || strrpos($type, 'image/', -strlen($type)) !== FALSE;
+      $content_type = is_array($url_headers['Content-Type']) ? reset($url_headers['Content-Type']) : $url_headers['Content-Type'];
+      $valid = FALSE;
+      if (is_string($content_type)) {
+        $type = strtolower($content_type);
+        // Does the media type start with 'image/'.
+        $valid = !empty($type) || strrpos($type, 'image/', -strlen($type)) !== FALSE;
+      }
     }
 
     // Keep it, if valid.

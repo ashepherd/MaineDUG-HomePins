@@ -25,7 +25,7 @@ function homepins_form_alter(&$form, &$form_state, $form_id) {
 
 
   //STEP 4: $form['#node_edit_form']
-  /*
+  //*
   // Using hook_form_alter to do something across multiple forms.
   if (!empty($form['#node_edit_form'])) {
     // If a node form, display some markup at the top.
@@ -35,7 +35,7 @@ function homepins_form_alter(&$form, &$form_state, $form_id) {
     );
 
     // STEP 5: Custom validation handler.
-    //$form['#validate'][] = '_homepins_node_form_title_validate';
+    $form['#validate'][] = '_homepins_node_form_title_validate';
   }
   //*/
 }
@@ -46,11 +46,11 @@ function homepins_form_alter(&$form, &$form_state, $form_id) {
 function homepins_form_pin_node_form_alter(&$form, &$form_state, $form_id) {
   // STEP 3: Use hook_form_FORM_ID_alter().
   // Edit a field's label.
-  //$form['title']['#title'] = 'Name of the Pin';
+  $form['title']['#title'] = 'Name of the Pin';
 
   // STEP 6: Show the default image for a Pin node.
-  /*
-  dpm($form['field_image'], 'field_image');
+
+  //dpm($form['field_image'], 'field_image');
   // NESTED ELEMENTS & #default_value
 
   // Add some #prefix markup to the Upload field.
@@ -65,17 +65,18 @@ function homepins_form_pin_node_form_alter(&$form, &$form_state, $form_id) {
         'image_style' => 'thumbnail',
       );
       $msg = t('This is the default image for Pins without an image.');
-      $form['field_image']['#prefix'] = theme_image_formatter($var) . '<span class="field-image-default-text">' . $msg  . '</span>';
+      $form['field_image']['#suffix'] = theme_image_formatter($var) . '<span class="field-image-default-text">' . $msg  . '</span>';
     }
     else {
       $form['field_image']['#prefix']  = t('No default image specified for Pins.');
     }
   }
-  */
+  //*/
 
-  /*
+
   // STEP 7: ALTER SELECT OPTIONS.
-  dpm($form['field_board']);
+  //dpm($form['field_board']);
+
   // Add the number of pins a board has to the select list of options.
   $boards = $form['field_board'][LANGUAGE_NONE]['#options'];
 
@@ -109,13 +110,15 @@ function homepins_form_pin_node_form_alter(&$form, &$form_state, $form_id) {
  */
 function homepins_form_board_node_form_alter(&$form, &$form_state, $form_id) {
   // STEP 8: Validating specific form elements.
-  //$form['title']['#element_validate'][] = 'homepins_node_title_unique_validate';
+  $form['title']['#element_validate'][] = 'homepins_node_title_unique_validate';
 }
 
 /**
  * Validate the uniqueness of the node title.
  */
 function homepins_node_title_unique_validate($element, &$form_state, $form) {
+
+  //dpm($element);
 
   // Get the submitted node title value.
   $value = $element['#value'];
@@ -198,7 +201,7 @@ function _homepins_pin_default_image() {
 function _homepins_board_pin_count() {
   return db_query("SELECT board_pins.field_board_target_id as board,
       COUNT(board_pins.entity_id) as pin_count
-    FROM {field_revision_field_board} board_pins
+    FROM {field_data_field_board} board_pins
     WHERE board_pins.entity_type = 'node' AND board_pins.bundle = 'pin' AND board_pins.deleted = 0
     GROUP BY board_pins.field_board_target_id")
     ->fetchAllKeyed();

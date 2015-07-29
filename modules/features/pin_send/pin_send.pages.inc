@@ -52,7 +52,6 @@ function pin_send_form($form, &$form_state) {
   );
 
   // STEP 2: #ajax - Add another Pin to send
-  /*
   $form['select-pins']['add-pin'] = array(
     '#type' => 'button',
     '#value' => t('Add Another Pin'),
@@ -64,11 +63,11 @@ function pin_send_form($form, &$form_state) {
       'effect' => 'fade',
     ),
   );
-  */
 
   // How many Pins to send.
   $pin_count = 1;
 
+  //Try out static function!!!- Adam.
   // Get an array of Pins only once for performance.
   if (!isset($form_state['storage']['pins'])) {
     $form_state['storage']['pins'] = _pin_send_pin_options();
@@ -76,7 +75,7 @@ function pin_send_form($form, &$form_state) {
   $select_a_pin = $form_state['storage']['pins'];
 
   // STEP 2a: Use the pin count set in the $form_state['storage']['pin-count'].
-  /*
+
   // Make sure at least one pin textfield is displayed.
   if (!isset($form_state['storage']['pin-count'])) {
     $form_state['storage']['pin-count'] = $pin_count;
@@ -84,7 +83,7 @@ function pin_send_form($form, &$form_state) {
   else {
     $pin_count = $form_state['storage']['pin-count'];
   }
-  */
+
 
   // For each Pin count
   for($a = 0; $a < $pin_count; $a++) {
